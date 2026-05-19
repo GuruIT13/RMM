@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "supabase-mcp"],
+      "env": {
+        "SUPABASE_URL": "https://dnecmrpjcydmpreofmnl.supabase.co",
+        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRuZWNtcnBqY3lkbXByZW9mbW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNzE3NDgsImV4cCI6MjA5NDY0Nzc0OH0.2O9D7ld9fssX4LIYzwZ016Mx7iZBJtZ3COVZbwE4dA8",
+        "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRuZWNtcnBqY3lkbXByZW9mbW5sIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTA3MTc0OCwiZXhwIjoyMDk0NjQ3NzQ4fQ.e5QbGkPlFKqW238BSAhaOSSgYxzDGGTeblvKK0lkfHM",
+        "MCP_API_KEY": "rmm-local-dev"
+      }
+    }
+  }
+}

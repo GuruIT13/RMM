@@ -1,0 +1,149 @@
+<h2>Directory & Device Layout</h2>
+<p class="subtitle">เลือก layout สำหรับ Directory collapse/expand + device grid แบบ CCTV</p>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0f172a;border-radius:8px;font-family:monospace;font-size:11px">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border-radius:6px;margin-bottom:6px;cursor:pointer;border:1px solid #334155">
+        <span style="color:#f59e0b">▶</span>
+        <span style="color:#f1f5f9;font-weight:600">📁 บริษัท ABC</span>
+        <span style="color:#64748b;margin-left:auto">3 เครื่อง</span>
+        <span style="color:#475569">↻</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border-radius:6px;border:1px solid #334155">
+        <span style="color:#f59e0b">▼</span>
+        <span style="color:#f1f5f9;font-weight:600">📁 บริษัท XYZ</span>
+        <span style="color:#64748b;margin-left:auto">2 เครื่อง</span>
+        <span style="color:#475569">↻</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;margin-left:16px">
+        <div style="background:#1e293b;border:1px solid #22c55e33;border-radius:8px;padding:10px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e"></div>
+            <span style="color:#f1f5f9;font-size:10px;font-weight:600">PC-001</span>
+            <span style="color:#475569;margin-left:auto;font-size:9px">↻</span>
+          </div>
+          <div style="color:#94a3b8;font-size:9px">CPU 45% · RAM 62%</div>
+          <div style="color:#94a3b8;font-size:9px">Free 120 GB</div>
+        </div>
+        <div style="background:#1e293b;border:1px solid #22c55e33;border-radius:8px;padding:10px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e"></div>
+            <span style="color:#f1f5f9;font-size:10px;font-weight:600">PC-002</span>
+            <span style="color:#475569;margin-left:auto;font-size:9px">↻</span>
+          </div>
+          <div style="color:#94a3b8;font-size:9px">CPU 12% · RAM 38%</div>
+          <div style="color:#94a3b8;font-size:9px">Free 450 GB</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Accordion + Grid Cards</h3>
+      <p>Directory เป็น accordion row กด expand → devices แสดงเป็น grid 2-3 คอลัมน์ แต่ละ card มีปุ่ม ↻ refresh ของตัวเอง</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0f172a;border-radius:8px;font-family:monospace;font-size:11px">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border-radius:6px;margin-bottom:6px;border:1px solid #334155">
+        <span style="color:#f59e0b">▶</span>
+        <span style="color:#f1f5f9;font-weight:600">📁 บริษัท ABC</span>
+        <span style="background:#0284c7;color:white;border-radius:4px;padding:1px 6px;font-size:9px;margin-left:4px">3</span>
+        <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+          <span style="color:#64748b;font-size:9px">↻ Refresh All</span>
+        </div>
+      </div>
+      <!-- Expanded directory -->
+      <div style="background:#0f172a;border:1px solid #7c3aed44;border-radius:6px;padding:8px;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#1e293b;border-radius:6px;margin-bottom:4px;border:1px solid #7c3aed44">
+          <span style="color:#7c3aed">▼</span>
+          <span style="color:#f1f5f9;font-weight:600">📁 บริษัท XYZ</span>
+          <span style="background:#7c3aed;color:white;border-radius:4px;padding:1px 6px;font-size:9px;margin-left:4px">2</span>
+          <span style="color:#475569;margin-left:auto;font-size:9px">↻ All</span>
+        </div>
+        <!-- CCTV-style grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+          <div style="background:#0d1117;border:1px solid #22c55e55;border-radius:6px;padding:8px;position:relative">
+            <div style="position:absolute;top:4px;right:4px;color:#22c55e;font-size:8px">● LIVE</div>
+            <div style="color:#f1f5f9;font-size:10px;font-weight:600;margin-bottom:4px">PC-SALES-01</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">
+              <div style="background:#1e293b;border-radius:3px;padding:3px;text-align:center">
+                <div style="color:#60a5fa;font-size:10px;font-weight:700">45%</div>
+                <div style="color:#475569;font-size:8px">CPU</div>
+              </div>
+              <div style="background:#1e293b;border-radius:3px;padding:3px;text-align:center">
+                <div style="color:#a78bfa;font-size:10px;font-weight:700">62%</div>
+                <div style="color:#475569;font-size:8px">RAM</div>
+              </div>
+            </div>
+            <div style="margin-top:4px;display:flex;justify-content:space-between;align-items:center">
+              <span style="color:#94a3b8;font-size:8px">120 GB free</span>
+              <button style="background:#334155;border:none;color:#94a3b8;border-radius:3px;padding:2px 6px;font-size:8px;cursor:pointer">↻</button>
+            </div>
+          </div>
+          <div style="background:#0d1117;border:1px solid #475569;border-radius:6px;padding:8px;position:relative;opacity:0.6">
+            <div style="position:absolute;top:4px;right:4px;color:#64748b;font-size:8px">● OFF</div>
+            <div style="color:#94a3b8;font-size:10px;font-weight:600;margin-bottom:4px">PC-ACCT-01</div>
+            <div style="color:#475569;font-size:9px">Last seen 2h ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — CCTV Monitor Style</h3>
+      <p>แต่ละ device card ดูเหมือนจอ CCTV — มี ● LIVE / ● OFF, metric mini-panels, ปุ่ม ↻ ต่อเครื่อง + ↻ All ต่อ Directory</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0f172a;border-radius:8px;font-family:monospace;font-size:11px">
+      <!-- Sidebar directories -->
+      <div style="display:flex;gap:8px;height:160px">
+        <div style="width:90px;background:#1e293b;border-radius:6px;padding:8px;border:1px solid #334155;display:flex;flex-direction:column;gap:4px;overflow:hidden">
+          <div style="color:#475569;font-size:8px;font-weight:700;letter-spacing:1px;margin-bottom:2px">DIRECTORIES</div>
+          <div style="background:#7c3aed22;border:1px solid #7c3aed44;border-radius:4px;padding:4px 6px;color:#a78bfa;font-size:9px">📁 ABC Co.</div>
+          <div style="border-radius:4px;padding:4px 6px;color:#64748b;font-size:9px">📁 XYZ Co.</div>
+          <div style="border-radius:4px;padding:4px 6px;color:#64748b;font-size:9px">📁 DEF Co.</div>
+        </div>
+        <!-- Main area: device grid -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="color:#f1f5f9;font-size:10px;font-weight:700">ABC Co.</span>
+            <span style="color:#64748b;font-size:9px">3 เครื่อง</span>
+            <span style="color:#475569;margin-left:auto;font-size:9px">↻ Refresh</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;flex:1">
+            <div style="background:#1e293b;border:1px solid #22c55e44;border-radius:6px;padding:6px">
+              <div style="color:#22c55e;font-size:8px;margin-bottom:2px">● LIVE</div>
+              <div style="color:#f1f5f9;font-size:9px;font-weight:600">PC-001</div>
+              <div style="color:#94a3b8;font-size:8px;margin-top:2px">CPU 45%</div>
+              <div style="color:#94a3b8;font-size:8px">RAM 62%</div>
+              <button style="background:#334155;border:none;color:#94a3b8;border-radius:2px;padding:1px 5px;font-size:8px;cursor:pointer;margin-top:3px;width:100%">↻</button>
+            </div>
+            <div style="background:#1e293b;border:1px solid #22c55e44;border-radius:6px;padding:6px">
+              <div style="color:#22c55e;font-size:8px;margin-bottom:2px">● LIVE</div>
+              <div style="color:#f1f5f9;font-size:9px;font-weight:600">PC-002</div>
+              <div style="color:#94a3b8;font-size:8px;margin-top:2px">CPU 12%</div>
+              <div style="color:#94a3b8;font-size:8px">RAM 38%</div>
+              <button style="background:#334155;border:none;color:#94a3b8;border-radius:2px;padding:1px 5px;font-size:8px;cursor:pointer;margin-top:3px;width:100%">↻</button>
+            </div>
+            <div style="background:#1e293b;border:1px solid #47556944;border-radius:6px;padding:6px;opacity:0.5">
+              <div style="color:#64748b;font-size:8px;margin-bottom:2px">● OFF</div>
+              <div style="color:#94a3b8;font-size:9px;font-weight:600">PC-003</div>
+              <div style="color:#475569;font-size:8px;margin-top:2px">2h ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Sidebar Nav + Grid</h3>
+      <p>Sidebar คลิก Directory → main area แสดง device grid ของ directory นั้น ไม่ต้อง scroll หาตลอด แต่ต้องเปลี่ยน page structure มาก</p>
+    </div>
+  </div>
+
+</div>

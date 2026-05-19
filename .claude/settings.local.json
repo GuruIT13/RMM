@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Guruit\\\\Documents\\\\RMM\" -Recurse -Force)",
+      "Bash(Select-Object -Property FullName, PSIsContainer)",
+      "Bash(Sort-Object FullName)",
+      "Bash(ConvertTo-Json -Depth 100)",
+      "Bash(Out-String)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Guruit\\\\Documents\\\\RMM\" -Recurse -Force | Format-Table -Property FullName, @{Name=\"Type\"; Expression={if \\($_.PSIsContainer\\) {\"Dir\"} else {\"File\"}}} -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Guruit\\\\Documents\\\\RMM\" -Recurse -Hidden -Force | Format-Table -Property FullName, @{Name=\"Type\"; Expression={if \\($_.PSIsContainer\\) {\"Dir\"} else {\"File\"}}} -AutoSize)",
+      "Skill(update-config)",
+      "PowerShell(npx supabase --version 2>&1)",
+      "PowerShell(curl -so $null -w \"%{http_code}\" https://mcp.supabase.com/mcp)",
+      "PowerShell(npx -y supabase-mcp --help 2>&1 | Select-Object -First 20)",
+      "PowerShell(npx supabase db --help 2>&1 | Select-Object -First 20)",
+      "PowerShell(npx supabase db query --help 2>&1)",
+      "PowerShell(netstat *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Rename-Item *)",
+      "Bash(python main.py)",
+      "Bash(cat agent.log)",
+      "Bash(python *)",
+      "Bash(Get-ChildItem *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Guruit\\\\Documents\\\\RMM\\\\dashboard\" -Exclude node_modules -Recurse -Directory | ForEach-Object { $_.FullName } | Sort-Object)",
+      "Bash(bash *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git init *)"
+    ]
+  }
+}
