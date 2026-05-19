@@ -26,7 +26,11 @@
       "Bash(bash *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git init *)"
+      "Bash(git init *)",
+      "Bash(Test-Path C:\\\\Users\\\\Guruit\\\\Documents\\\\RMM\\\\dashboard\\\\components *)",
+      "Bash(New-Item *)",
+      "Bash(npm run *)",
+      "Bash(git *)"
     ]
   }
 }
