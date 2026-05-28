@@ -1,6 +1,7 @@
 """Execute commands received from commands_queue. All runs are hidden (no CMD window)."""
 import logging
 import subprocess
+from datetime import datetime, timezone
 from typing import Optional
 
 from supabase import Client
@@ -293,6 +294,8 @@ def handle_uninstall_software(payload: dict) -> str:
     name = payload.get("name", "").strip()
     if not name:
         return "ERROR: Missing name in payload"
+    # Escape single quotes for PowerShell string context
+    name = name.replace("'", "''")
     # lookup uninstall string from registry — never execute raw user input
     script = (
         f"$paths = 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
@@ -389,7 +392,7 @@ def execute_command(supabase: Client, device_id: str, command_row: dict) -> None
         supabase.table("commands_queue").update({
             "status": status,
             "output_result": output,
-            "executed_at": "now()",
+            "executed_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", cmd_id).execute()
     except Exception as e:
         logger.error("Failed to write command result: %s", e)

@@ -1,6 +1,7 @@
 """Device self-registration and heartbeat updates."""
 import logging
 import platform
+from datetime import datetime, timezone
 from typing import Optional
 
 from supabase import Client
@@ -52,7 +53,7 @@ def send_heartbeat(supabase: Client, device_id: str) -> None:
         metrics = collect_all()
         update_data = {
             "status": "online",
-            "last_seen": "now()",
+            "last_seen": datetime.now(timezone.utc).isoformat(),
             **metrics,
         }
         supabase.table("devices").update(update_data).eq("id", device_id).execute()
