@@ -38,17 +38,19 @@ Deno.serve(async () => {
     const name = d.display_name ?? d.hostname;
 
     // CPU
-    if (d.cpu_usage >= THRESHOLDS.cpu_usage.critical) {
-      alerts.push({ device_id: d.id, severity: "critical", message: `CPU usage ${d.cpu_usage.toFixed(0)}% (critical threshold ${THRESHOLDS.cpu_usage.critical}%) on ${name}` });
-    } else if (d.cpu_usage >= THRESHOLDS.cpu_usage.warning) {
-      alerts.push({ device_id: d.id, severity: "warning", message: `CPU usage ${d.cpu_usage.toFixed(0)}% (warning threshold ${THRESHOLDS.cpu_usage.warning}%) on ${name}` });
+    const cpuUsage = d.cpu_usage ?? 0;
+    if (cpuUsage >= THRESHOLDS.cpu_usage.critical) {
+      alerts.push({ device_id: d.id, severity: "critical", message: `CPU usage ${cpuUsage.toFixed(0)}% (critical threshold ${THRESHOLDS.cpu_usage.critical}%) on ${name}` });
+    } else if (cpuUsage >= THRESHOLDS.cpu_usage.warning) {
+      alerts.push({ device_id: d.id, severity: "warning", message: `CPU usage ${cpuUsage.toFixed(0)}% (warning threshold ${THRESHOLDS.cpu_usage.warning}%) on ${name}` });
     }
 
     // RAM
-    if (d.ram_usage >= THRESHOLDS.ram_usage.critical) {
-      alerts.push({ device_id: d.id, severity: "critical", message: `RAM usage ${d.ram_usage.toFixed(0)}% (critical threshold ${THRESHOLDS.ram_usage.critical}%) on ${name}` });
-    } else if (d.ram_usage >= THRESHOLDS.ram_usage.warning) {
-      alerts.push({ device_id: d.id, severity: "warning", message: `RAM usage ${d.ram_usage.toFixed(0)}% (warning threshold ${THRESHOLDS.ram_usage.warning}%) on ${name}` });
+    const ramUsage = d.ram_usage ?? 0;
+    if (ramUsage >= THRESHOLDS.ram_usage.critical) {
+      alerts.push({ device_id: d.id, severity: "critical", message: `RAM usage ${ramUsage.toFixed(0)}% (critical threshold ${THRESHOLDS.ram_usage.critical}%) on ${name}` });
+    } else if (ramUsage >= THRESHOLDS.ram_usage.warning) {
+      alerts.push({ device_id: d.id, severity: "warning", message: `RAM usage ${ramUsage.toFixed(0)}% (warning threshold ${THRESHOLDS.ram_usage.warning}%) on ${name}` });
     }
 
     // Storage free
