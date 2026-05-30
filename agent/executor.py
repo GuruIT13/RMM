@@ -5,10 +5,14 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from supabase import Client
+import re as _re
 
 from config import COMMAND_TIMEOUT
 
 logger = logging.getLogger(__name__)
+
+_PROCESS_NAME_RE = _re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,253}\.exe$', _re.IGNORECASE)
+_CUSTOM_CMD_MAX_LEN = 2000
 
 _ANYDESK_SEARCH_PATHS = [
     r"C:\Program Files (x86)\AnyDesk\AnyDesk.exe",
@@ -103,9 +107,9 @@ def handle_windows_update() -> str:
 
 
 def handle_kill_process(payload: dict) -> str:
-    process_name = payload.get("process_name", "")
-    if not process_name or not process_name.replace(".", "").replace("-", "").replace("_", "").isalnum():
-        return "ERROR: Invalid process_name"
+    process_name = payload.get("process_name", "").strip()
+    if not process_name or not _PROCESS_NAME_RE.match(process_name):
+        return "ERROR: Invalid process_name — must be a valid .exe filename (e.g. notepad.exe)"
     return _run(["taskkill", "/F", "/IM", process_name])
 
 
@@ -121,6 +125,8 @@ def handle_custom_cmd(payload: dict) -> str:
     command = payload.get("command", "").strip()
     if not command:
         return "ERROR: Empty command"
+    if len(command) > _CUSTOM_CMD_MAX_LEN:
+        return f"ERROR: Command exceeds {_CUSTOM_CMD_MAX_LEN} character limit"
     return _run(["cmd.exe", "/c", command], timeout=COMMAND_TIMEOUT)
 
 
