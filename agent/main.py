@@ -20,6 +20,8 @@ from tray import start_tray
 
 logger = logging.getLogger(__name__)
 
+_MAX_AUTH_FAILURES = 3
+
 
 def setup_logging() -> None:
     handler = RotatingFileHandler(
@@ -46,19 +48,29 @@ async def heartbeat_loop(supabase_sync, device_id: str) -> None:
 
 
 async def realtime_loop(supabase_sync, device_id: str) -> None:
-    """Realtime listener with auto-reconnect on failure."""
+    """Realtime listener with auto-reconnect on failure. Stops after repeated auth failures."""
     retry_delay = 5
+    auth_failures = 0
     while True:
         try:
             supabase_async = await acreate_client(config.SUPABASE_URL, config.SUPABASE_ANON_KEY)
             logger.info("Realtime client created, connecting…")
             await start_realtime_listener(supabase_async, supabase_sync, device_id)
+        except PermissionError as e:
+            auth_failures += 1
+            logger.critical("Realtime auth failure %d/%d: %s", auth_failures, _MAX_AUTH_FAILURES, e)
+            if auth_failures >= _MAX_AUTH_FAILURES:
+                logger.critical("Too many auth failures — Realtime listener shutting down. Check SUPABASE_ANON_KEY.")
+                return  # stop retrying; heartbeat loop continues
+            await asyncio.sleep(retry_delay)
         except Exception as e:
+            auth_failures = 0  # reset on non-auth error
             logger.error("Realtime listener crashed: %s — retrying in %ss", e, retry_delay)
             await asyncio.sleep(retry_delay)
-            retry_delay = min(retry_delay * 2, 60)  # exponential backoff up to 60s
+            retry_delay = min(retry_delay * 2, 60)
         else:
-            retry_delay = 5  # reset on clean exit
+            auth_failures = 0
+            retry_delay = 5
 
 
 async def main_async() -> None:

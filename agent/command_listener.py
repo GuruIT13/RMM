@@ -38,6 +38,9 @@ async def start_realtime_listener(supabase_async, supabase_sync, device_id: str)
     try:
         await channel.subscribe()
     except Exception as e:
+        err_str = str(e).lower()
+        if any(kw in err_str for kw in ("unauthorized", "invalid api key", "jwt", "403", "401")):
+            raise PermissionError(f"Realtime auth failed (check SUPABASE_ANON_KEY): {e}") from e
         raise ConnectionError(f"Realtime subscription failed: {e}") from e
     logger.info("Realtime listener subscribed for device %s", device_id)
 
