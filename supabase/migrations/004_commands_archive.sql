@@ -16,7 +16,8 @@ BEGIN
   INSERT INTO commands_archive
   SELECT * FROM commands_queue
   WHERE status IN ('completed', 'failed')
-    AND created_at < NOW() - INTERVAL '30 days';
+    AND created_at < NOW() - INTERVAL '30 days'
+  ON CONFLICT (id) DO NOTHING;
 
   DELETE FROM commands_queue
   WHERE status IN ('completed', 'failed')

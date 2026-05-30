@@ -29,6 +29,9 @@ RETURNS BOOLEAN AS $$
     );
 $$ LANGUAGE sql SECURITY DEFINER;
 
+-- Devices with directory_id IS NULL are unassigned — only super_admin can see them.
+-- can_access_directory(NULL) always returns false for helpdesk (SQL NULL semantics).
+-- This is intentional: unassigned devices are managed exclusively by super_admin.
 DROP POLICY IF EXISTS "staff_read_approved_devices" ON devices;
 CREATE POLICY "staff_read_approved_devices" ON devices
   FOR SELECT
