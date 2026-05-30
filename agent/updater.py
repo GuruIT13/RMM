@@ -1,4 +1,5 @@
 """Auto-update: compare version against agent_versions table, download and replace if newer."""
+import hashlib
 import logging
 import os
 import subprocess
@@ -15,6 +16,20 @@ from config import AGENT_VERSION
 logger = logging.getLogger(__name__)
 
 
+def _verify_checksum(file_path: str, expected_sha256: str) -> bool:
+    """Return True if file SHA-256 matches expected hex digest."""
+    sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256.update(chunk)
+    actual = sha256.hexdigest().lower()
+    expected = expected_sha256.lower()
+    if actual != expected:
+        logger.error("Checksum mismatch: expected %s got %s", expected, actual)
+        return False
+    return True
+
+
 def check_and_update(supabase: Client) -> None:
     """
     Fetch latest version from Supabase. If newer, download exe to temp,
@@ -23,7 +38,7 @@ def check_and_update(supabase: Client) -> None:
     try:
         res = (
             supabase.table("agent_versions")
-            .select("version_number, download_url")
+            .select("version_number, download_url, checksum_sha256")
             .order("created_at", desc=True)
             .limit(1)
             .execute()
@@ -40,13 +55,13 @@ def check_and_update(supabase: Client) -> None:
             return
 
         logger.info("New version available: %s → %s", AGENT_VERSION, latest_version)
-        _download_and_replace(download_url)
+        _download_and_replace(download_url, latest)
 
     except Exception as e:
         logger.warning("Auto-update check failed: %s", e)
 
 
-def _download_and_replace(download_url: str) -> None:
+def _download_and_replace(download_url: str, version_row: dict) -> None:
     try:
         current_exe = sys.executable
         tmp_fd, tmp_path = tempfile.mkstemp(suffix=".exe")
@@ -57,6 +72,12 @@ def _download_and_replace(download_url: str) -> None:
         with open(tmp_path, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
+
+        checksum = version_row.get("checksum_sha256")
+        if checksum and not _verify_checksum(tmp_path, checksum):
+            logger.error("Update aborted: checksum verification failed")
+            os.remove(tmp_path)
+            return
 
         # Replace current exe then restart service
         # bat script does the replace-after-exit trick
