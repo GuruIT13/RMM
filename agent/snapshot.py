@@ -29,9 +29,13 @@ def take(
     Falls back to hostname if display_name is None/empty.
     Returns [] on any failure — never raises.
     """
+    dest = Path(share_path)
+    if not dest.is_absolute():
+        logger.warning("Snapshot share path is not absolute: %s", share_path)
+        return []
+
     prefix = _safe_name(display_name or hostname or socket.gethostname())
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    dest = Path(share_path)
 
     written: list[str] = []
     try:
