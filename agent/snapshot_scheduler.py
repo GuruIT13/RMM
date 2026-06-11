@@ -3,7 +3,6 @@ import logging
 import random
 import threading
 import time
-from typing import Optional
 
 from supabase import Client
 
@@ -81,6 +80,8 @@ def _scheduler_loop(supabase: Client, device_id: str) -> None:
                 )
                 if written:
                     logger.info("Snapshot: wrote %d file(s)", len(written))
+                else:
+                    logger.warning("Snapshot: no files written (share inaccessible or no monitors)")
             except Exception as e:
                 logger.warning("Snapshot failed unexpectedly: %s", e)
         else:
