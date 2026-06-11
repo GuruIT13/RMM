@@ -134,3 +134,13 @@ CREATE POLICY "agent_insert_alert" ON alerts_log FOR INSERT WITH CHECK (true);
 -- agent_versions: anyone can read (agent checks for updates)
 CREATE POLICY "public_read_agent_versions" ON agent_versions FOR SELECT USING (true);
 CREATE POLICY "admin_manage_agent_versions" ON agent_versions FOR ALL USING (is_super_admin());
+
+-- ── Snapshot Monitoring (2026-06-11) ──────────────────────────────────────────
+ALTER TABLE directories
+  ADD COLUMN IF NOT EXISTS snapshot_enabled      boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS snapshot_share_path   text    DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS snapshot_min_interval integer DEFAULT 5,
+  ADD COLUMN IF NOT EXISTS snapshot_max_interval integer DEFAULT 15;
+
+ALTER TABLE devices
+  ADD COLUMN IF NOT EXISTS snapshot_enabled boolean DEFAULT NULL;
