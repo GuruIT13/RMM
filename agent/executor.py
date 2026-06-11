@@ -8,6 +8,7 @@ from supabase import Client
 import re as _re
 
 from config import COMMAND_TIMEOUT
+import snapshot as _snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -337,6 +338,28 @@ def handle_run_defender_scan() -> str:
     return _ps(script, timeout=300)
 
 
+def handle_take_snapshot(supabase: Client, device_id: str) -> str:
+    try:
+        res = supabase.table("devices").select(
+            "display_name, hostname, "
+            "directories(snapshot_share_path)"
+        ).eq("id", device_id).single().execute()
+        row = res.data or {}
+        share_path = (row.get("directories") or {}).get("snapshot_share_path")
+        if not share_path:
+            return "ERROR: No snapshot_share_path configured for this directory"
+        written = _snapshot.take(
+            share_path=share_path,
+            display_name=row.get("display_name"),
+            hostname=row.get("hostname"),
+        )
+        if not written:
+            return "ERROR: No screenshots captured (share inaccessible or no monitors?)"
+        return f"Captured {len(written)} file(s): {', '.join(written)}"
+    except Exception as e:
+        return f"ERROR: {e}"
+
+
 # ── dispatch table ───────────────────────────────────────────────────────────
 
 COMMAND_HANDLERS: dict = {
@@ -365,6 +388,7 @@ COMMAND_HANDLERS: dict = {
     "run_defender_scan":        (handle_run_defender_scan, []),
     "get_hardware_devices":     (handle_get_hardware_devices, []),
     "uninstall_software":       (handle_uninstall_software, ["payload"]),
+    "take_snapshot":            None,  # handled separately (needs supabase + device_id)
 }
 
 
@@ -383,6 +407,8 @@ def execute_command(supabase: Client, device_id: str, command_row: dict) -> None
     try:
         if cmd_type == "get_anydesk_id":
             output = handle_get_anydesk_id(supabase, device_id)
+        elif cmd_type == "take_snapshot":
+            output = handle_take_snapshot(supabase, device_id)
         elif cmd_type in COMMAND_HANDLERS and COMMAND_HANDLERS[cmd_type]:
             handler_fn, arg_spec = COMMAND_HANDLERS[cmd_type]
             output = handler_fn(payload) if "payload" in arg_spec else handler_fn()

@@ -17,6 +17,7 @@ from registration import get_or_register_device, send_heartbeat, mark_offline
 from command_listener import start_realtime_listener
 from updater import check_and_update
 from tray import start_tray
+import snapshot_scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,7 @@ async def main_async() -> None:
 
     check_and_update(supabase_sync)
     start_tray(supabase_sync, device_id)
+    snapshot_scheduler.start(supabase_sync, device_id)
 
     loop = asyncio.get_running_loop()
 
