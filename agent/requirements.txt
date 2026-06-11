@@ -6,3 +6,4 @@ pystray==0.19.5
 Pillow==11.1.0
 requests==2.32.3
 packaging==24.2
+mss==9.0.2
