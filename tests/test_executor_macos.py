@@ -143,3 +143,63 @@ def test_ping_test_macos(monkeypatch):
     with mock.patch("subprocess.run", side_effect=fake_run):
         ex.handle_ping_test({"host": "8.8.8.8"})
     assert calls[0] == ["ping", "-c", "4", "8.8.8.8"]
+
+
+def test_get_system_info_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import agent.executor as ex
+    reload(ex)
+
+    calls = []
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        r = mock.MagicMock()
+        if args[0] == "sw_vers":
+            r.stdout = "ProductName: macOS\nProductVersion: 14.0\n"
+        else:
+            r.stdout = "up 3 days"
+        r.stderr = ""
+        return r
+
+    with mock.patch("subprocess.run", side_effect=fake_run):
+        result = ex.handle_get_system_info()
+    assert "macOS" in result
+    assert any("sw_vers" in str(c) for c in calls)
+
+
+def test_flush_dns_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import agent.executor as ex
+    reload(ex)
+
+    calls = []
+    def fake_run(args, **kwargs):
+        calls.append(args); r = mock.MagicMock(); r.stdout = "ok"; r.stderr = ""; return r
+
+    with mock.patch("subprocess.run", side_effect=fake_run):
+        ex.handle_flush_dns()
+    assert any("dscacheutil" in str(c) for c in calls)
+
+
+def test_run_defender_scan_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import agent.executor as ex
+    reload(ex)
+
+    result = ex.handle_run_defender_scan()
+    assert "XProtect" in result

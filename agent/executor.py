@@ -153,16 +153,20 @@ def handle_custom_cmd(payload: dict) -> str:
 # ── new handlers ─────────────────────────────────────────────────────────────
 
 def handle_get_system_info() -> str:
-    script = (
-        "$os = Get-CimInstance Win32_OperatingSystem; "
-        "$uptime = (Get-Date) - $os.LastBootUpTime; "
-        "\"OS: $($os.Caption) $($os.Version)\n"
-        "Build: $($os.BuildNumber)\n"
-        "Last Boot: $($os.LastBootUpTime)\n"
-        "Uptime: $([int]$uptime.TotalHours)h $($uptime.Minutes)m\n"
-        "Install Date: $($os.InstallDate)\""
-    )
-    return _ps(script, timeout=30)
+    if IS_WINDOWS:
+        script = (
+            "$os = Get-CimInstance Win32_OperatingSystem; "
+            "$uptime = (Get-Date) - $os.LastBootUpTime; "
+            "\"OS: $($os.Caption) $($os.Version)\n"
+            "Build: $($os.BuildNumber)\n"
+            "Last Boot: $($os.LastBootUpTime)\n"
+            "Uptime: $([int]$uptime.TotalHours)h $($uptime.Minutes)m\n"
+            "Install Date: $($os.InstallDate)\""
+        )
+        return _ps(script, timeout=30)
+    vers = _run(["sw_vers"], timeout=10)
+    uptime = _run(["uptime"], timeout=10)
+    return f"{vers}\n{uptime}"
 
 
 def handle_list_processes() -> str:
@@ -205,37 +209,49 @@ def handle_run_sfc() -> str:
 
 
 def handle_flush_dns() -> str:
-    return _run(["ipconfig", "/flushdns"], timeout=15)
+    if IS_WINDOWS:
+        return _run(["ipconfig", "/flushdns"], timeout=15)
+    out1 = _run(["dscacheutil", "-flushcache"], timeout=15)
+    out2 = _run(["sudo", "killall", "-HUP", "mDNSResponder"], timeout=15)
+    return f"{out1}\n{out2}".strip()
 
 
 def handle_clear_temp() -> str:
-    script = (
-        "$dirs = @($env:TEMP, 'C:\\Windows\\Temp'); "
-        "$total = 0; "
-        "foreach ($d in $dirs) { "
-        "  $files = Get-ChildItem $d -Recurse -Force -ErrorAction SilentlyContinue; "
-        "  $size = ($files | Measure-Object Length -Sum).Sum; "
-        "  Remove-Item \"$d\\*\" -Recurse -Force -ErrorAction SilentlyContinue; "
-        "  $total += $size "
-        "}; "
-        "\"Cleared approx $([math]::Round($total/1MB,1)) MB\""
-    )
-    return _ps(script, timeout=60)
+    if IS_WINDOWS:
+        script = (
+            "$dirs = @($env:TEMP, 'C:\\Windows\\Temp'); "
+            "$total = 0; "
+            "foreach ($d in $dirs) { "
+            "  $files = Get-ChildItem $d -Recurse -Force -ErrorAction SilentlyContinue; "
+            "  $size = ($files | Measure-Object Length -Sum).Sum; "
+            "  Remove-Item \"$d\\*\" -Recurse -Force -ErrorAction SilentlyContinue; "
+            "  $total += $size "
+            "}; "
+            "\"Cleared approx $([math]::Round($total/1MB,1)) MB\""
+        )
+        return _ps(script, timeout=60)
+    import os
+    cache_dir = os.path.expanduser("~/Library/Caches")
+    out1 = _run(["sudo", "rm", "-rf", "/tmp/*"], timeout=30)
+    out2 = _run(["rm", "-rf", cache_dir], timeout=30)
+    return "Temp cleared: /tmp and ~/Library/Caches"
 
 
 def handle_get_network_info() -> str:
-    script = (
-        "Get-NetIPConfiguration | ForEach-Object { "
-        "  $a = $_.IPv4Address; "
-        "  \"Interface: $($_.InterfaceAlias)\n"
-        "  IP: $($a.IPAddress)\n"
-        "  Gateway: $($_.IPv4DefaultGateway.NextHop)\n"
-        "  DNS: $($_.DNSServer.ServerAddresses -join ', ')\n\" "
-        "}; "
-        "Get-NetAdapter | Where-Object Status -eq Up | "
-        "Select-Object Name, MacAddress | Format-Table | Out-String"
-    )
-    return _ps(script, timeout=15)
+    if IS_WINDOWS:
+        script = (
+            "Get-NetIPConfiguration | ForEach-Object { "
+            "  $a = $_.IPv4Address; "
+            "  \"Interface: $($_.InterfaceAlias)\n"
+            "  IP: $($a.IPAddress)\n"
+            "  Gateway: $($_.IPv4DefaultGateway.NextHop)\n"
+            "  DNS: $($_.DNSServer.ServerAddresses -join ', ')\n\" "
+            "}; "
+            "Get-NetAdapter | Where-Object Status -eq Up | "
+            "Select-Object Name, MacAddress | Format-Table | Out-String"
+        )
+        return _ps(script, timeout=15)
+    return _run(["ifconfig"], timeout=15)
 
 
 def handle_ping_test(payload: dict) -> str:
@@ -348,6 +364,8 @@ def handle_uninstall_software(payload: dict) -> str:
 
 
 def handle_run_defender_scan() -> str:
+    if IS_MACOS:
+        return "Not supported on macOS — XProtect runs automatically"
     script = (
         "try { Start-MpScan -ScanType QuickScan -ErrorAction Stop } "
         "catch { if ($_.Exception.Message -match 'already in progress') { 'Scan already in progress' } "
