@@ -230,11 +230,27 @@ def handle_clear_temp() -> str:
             "\"Cleared approx $([math]::Round($total/1MB,1)) MB\""
         )
         return _ps(script, timeout=60)
-    import os
-    cache_dir = os.path.expanduser("~/Library/Caches")
-    out1 = _run(["sudo", "rm", "-rf", "/tmp/*"], timeout=30)
-    out2 = _run(["rm", "-rf", cache_dir], timeout=30)
-    return "Temp cleared: /tmp and ~/Library/Caches"
+    import shutil, os
+    cleared = []
+    errors = []
+    for target in ["/tmp", os.path.expanduser("~/Library/Caches")]:
+        try:
+            for item in os.listdir(target):
+                item_path = os.path.join(target, item)
+                try:
+                    if os.path.isdir(item_path):
+                        shutil.rmtree(item_path, ignore_errors=True)
+                    else:
+                        os.remove(item_path)
+                except Exception:
+                    pass
+            cleared.append(target)
+        except Exception as e:
+            errors.append(f"{target}: {e}")
+    result = f"Cleared: {', '.join(cleared)}"
+    if errors:
+        result += f"\nErrors: {'; '.join(errors)}"
+    return result
 
 
 def handle_get_network_info() -> str:
