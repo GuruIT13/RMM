@@ -1,4 +1,4 @@
-# Cross-platform
+# macOS dependencies — excludes Windows-only packages
 supabase==2.15.2
 psutil==6.1.1
 pystray==0.19.5
@@ -6,7 +6,3 @@ Pillow==11.1.0
 requests==2.32.3
 packaging==24.2
 mss==9.0.2
-
-# Windows only — do not install on macOS
-pywin32==308
-WMI==1.5.1
