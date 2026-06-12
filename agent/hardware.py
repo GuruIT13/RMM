@@ -79,7 +79,9 @@ def get_cpu_usage() -> float:
 
 
 def get_cpu_temp() -> Optional[float]:
-    """Windows doesn't expose CPU temp via psutil — requires WMI or vendor tool."""
+    """Windows doesn't expose CPU temp via psutil — requires WMI or vendor tool. macOS Apple Silicon does not expose thermal via CLI."""
+    if IS_MACOS:
+        return None  # Apple Silicon does not expose thermal via CLI
     try:
         import wmi  # type: ignore
         w = wmi.WMI(namespace="root/wmi")
@@ -109,9 +111,10 @@ def get_ram_usage() -> float:
 
 
 def get_storage_info() -> tuple[int, int]:
-    """Returns (total_bytes, free_bytes) for the C: drive."""
+    """Returns (total_bytes, free_bytes) for the root drive (C:\\ on Windows, / on macOS/Linux)."""
+    root = "C:\\" if IS_WINDOWS else "/"
     try:
-        usage = psutil.disk_usage("C:\\")
+        usage = psutil.disk_usage(root)
         return usage.total, usage.free
     except Exception as e:
         logger.warning("get_storage_info failed: %s", e)
@@ -127,21 +130,30 @@ def get_os_info() -> str:
 
 def get_firewall_status() -> Optional[bool]:
     try:
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = subprocess.SW_HIDE
-        result = subprocess.run(
-            ["netsh", "advfirewall", "show", "allprofiles", "state"],
-            capture_output=True, text=True, timeout=10, startupinfo=si
-        )
-        # If any profile is ON, return True
-        return "ON" in result.stdout.upper()
+        if IS_WINDOWS:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = subprocess.SW_HIDE
+            result = subprocess.run(
+                ["netsh", "advfirewall", "show", "allprofiles", "state"],
+                capture_output=True, text=True, timeout=10, startupinfo=si
+            )
+            # If any profile is ON, return True
+            return "ON" in result.stdout.upper()
+        elif IS_MACOS:
+            result = subprocess.run(
+                ["/usr/libexec/ApplicationFirewall/socketfilterfw", "--getglobalstate"],
+                capture_output=True, text=True, timeout=10
+            )
+            return "enabled" in result.stdout.lower()
     except Exception as e:
         logger.warning("get_firewall_status failed: %s", e)
-        return None
+    return None
 
 
 def get_antivirus_status() -> Optional[str]:
+    if IS_MACOS:
+        return "XProtect (built-in)"
     try:
         import wmi  # type: ignore
         w = wmi.WMI(namespace="root/SecurityCenter2")
