@@ -6,41 +6,65 @@ from typing import Optional
 
 import psutil
 
+from agent.platform_utils import IS_WINDOWS, IS_MACOS
+
 logger = logging.getLogger(__name__)
 
 
 def get_serial_number() -> str:
-    """Use WMIC to get motherboard serial. Falls back to hostname if unavailable."""
+    """Get device serial number from WMIC (Windows) or system_profiler (macOS). Falls back to hostname if unavailable."""
     try:
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = subprocess.SW_HIDE
-        result = subprocess.run(
-            ["wmic", "bios", "get", "SerialNumber", "/value"],
-            capture_output=True, text=True, timeout=10, startupinfo=si
-        )
-        for line in result.stdout.splitlines():
-            if line.startswith("SerialNumber="):
-                serial = line.split("=", 1)[1].strip()
-                if serial:
-                    return serial
+        if IS_WINDOWS:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = subprocess.SW_HIDE
+            result = subprocess.run(
+                ["wmic", "bios", "get", "SerialNumber", "/value"],
+                capture_output=True, text=True, timeout=10, startupinfo=si
+            )
+            for line in result.stdout.splitlines():
+                if line.startswith("SerialNumber="):
+                    serial = line.split("=", 1)[1].strip()
+                    if serial:
+                        return serial
+        elif IS_MACOS:
+            result = subprocess.run(
+                ["system_profiler", "SPHardwareDataType"],
+                capture_output=True, text=True, timeout=10
+            )
+            for line in result.stdout.splitlines():
+                if "Serial Number" in line:
+                    parts = line.split(":", 1)
+                    if len(parts) == 2:
+                        serial = parts[1].strip()
+                        if serial:
+                            return serial
     except Exception as e:
         logger.warning("get_serial_number failed: %s", e)
     return platform.node()  # hostname as fallback
 
 
 def get_cpu_name() -> Optional[str]:
+    """Get CPU name from WMIC (Windows) or sysctl (macOS)."""
     try:
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = subprocess.SW_HIDE
-        result = subprocess.run(
-            ["wmic", "cpu", "get", "Name", "/value"],
-            capture_output=True, text=True, timeout=10, startupinfo=si
-        )
-        for line in result.stdout.splitlines():
-            if line.startswith("Name="):
-                return line.split("=", 1)[1].strip() or None
+        if IS_WINDOWS:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = subprocess.SW_HIDE
+            result = subprocess.run(
+                ["wmic", "cpu", "get", "Name", "/value"],
+                capture_output=True, text=True, timeout=10, startupinfo=si
+            )
+            for line in result.stdout.splitlines():
+                if line.startswith("Name="):
+                    return line.split("=", 1)[1].strip() or None
+        elif IS_MACOS:
+            result = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                capture_output=True, text=True, timeout=10
+            )
+            name = result.stdout.strip()
+            return name or None
     except Exception as e:
         logger.warning("get_cpu_name failed: %s", e)
     return None
