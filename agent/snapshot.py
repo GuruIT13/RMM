@@ -9,6 +9,8 @@ from typing import Optional
 import mss
 import mss.tools
 
+from platform_utils import IS_WINDOWS, IS_MACOS
+
 logger = logging.getLogger(__name__)
 
 _FORBIDDEN = re.compile(r'[/\\:*?"<>|]')
@@ -31,7 +33,10 @@ def take(
     """
     dest = Path(share_path)
     if not dest.is_absolute():
-        logger.warning("Snapshot share path is not absolute: %s", share_path)
+        if IS_WINDOWS:
+            logger.warning("Snapshot share path is not absolute (expected \\\\server\\share or drive letter): %s", share_path)
+        else:
+            logger.warning("Snapshot share path is not absolute (expected /Volumes/share or /path): %s", share_path)
         return []
 
     prefix = _safe_name(display_name or hostname or socket.gethostname())
