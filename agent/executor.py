@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 _PROCESS_NAME_WIN_RE = _re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,253}\.exe$', _re.IGNORECASE)
 _PROCESS_NAME_MAC_RE = _re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._\- ]{0,253}$')
+_APP_NAME_MAC_RE = _re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._-]{0,253}$')
 _CUSTOM_CMD_MAX_LEN = 2000
 
 _ANYDESK_SEARCH_PATHS = [
@@ -174,14 +175,16 @@ def handle_get_system_info() -> str:
 
 
 def handle_list_processes() -> str:
-    script = (
-        "Get-Process | Sort-Object CPU -Descending | Select-Object -First 50 | "
-        "Select-Object Name, Id, "
-        "@{N='CPU';E={[math]::Round($_.CPU,1)}}, "
-        "@{N='RAM_MB';E={[math]::Round($_.WorkingSet64/1MB,1)}} | "
-        "ConvertTo-Json -Compress"
-    )
-    return _ps(script, timeout=30)
+    if IS_WINDOWS:
+        script = (
+            "Get-Process | Sort-Object CPU -Descending | Select-Object -First 50 | "
+            "Select-Object Name, Id, "
+            "@{N='CPU';E={[math]::Round($_.CPU,1)}}, "
+            "@{N='RAM_MB';E={[math]::Round($_.WorkingSet64/1MB,1)}} | "
+            "ConvertTo-Json -Compress"
+        )
+        return _ps(script, timeout=30)
+    return _run(["ps", "aux"], timeout=30)
 
 
 def handle_list_installed_software() -> str:
@@ -298,9 +301,11 @@ def handle_ping_test(payload: dict) -> str:
 
 def handle_lock_screen() -> str:
     if IS_WINDOWS:
-        _ps("rundll32.exe user32.dll,LockWorkStation", timeout=5)
+        result = _ps("rundll32.exe user32.dll,LockWorkStation", timeout=5)
     else:
-        _run(["pmset", "displaysleepnow"], timeout=5)
+        result = _run(["pmset", "displaysleepnow"], timeout=5)
+    if result and result.startswith("ERROR:"):
+        return result
     return "Screen locked"
 
 
@@ -404,7 +409,8 @@ def handle_uninstall_software(payload: dict) -> str:
             f"}}"
         )
         return _ps(script, timeout=300)
-    if "/" in name or "\\" in name or ".." in name:
+    # macOS: allowlist validation before constructing rm path
+    if not _APP_NAME_MAC_RE.match(name):
         return "ERROR: Invalid app name"
     app_path = f"/Applications/{name}.app"
     if not os.path.isdir(app_path):
