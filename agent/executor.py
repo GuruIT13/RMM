@@ -93,10 +93,14 @@ def handle_get_anydesk_id(supabase: Client, device_id: str) -> str:
 
 
 def handle_disk_cleanup() -> str:
-    return _run(["cleanmgr.exe", "/sagerun:1"])
+    if IS_WINDOWS:
+        return _run(["cleanmgr.exe", "/sagerun:1"])
+    return _run(["sudo", "periodic", "daily", "weekly", "monthly"], timeout=300)
 
 
 def handle_windows_update() -> str:
+    if IS_MACOS:
+        return _run(["softwareupdate", "-ia"], timeout=1800)
     script = (
         "$session = New-Object -ComObject Microsoft.Update.Session; "
         "$searcher = $session.CreateUpdateSearcher(); "
@@ -181,31 +185,41 @@ def handle_list_processes() -> str:
 
 
 def handle_list_installed_software() -> str:
-    script = (
-        "$paths = 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
-        "'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'; "
-        "Get-ItemProperty $paths -ErrorAction SilentlyContinue | "
-        "Where-Object DisplayName | "
-        "Sort-Object DisplayName | "
-        "Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, EstimatedSize | "
-        "ConvertTo-Json -Compress"
-    )
-    return _ps(script, timeout=30)
+    if IS_WINDOWS:
+        script = (
+            "$paths = 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
+            "'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'; "
+            "Get-ItemProperty $paths -ErrorAction SilentlyContinue | "
+            "Where-Object DisplayName | "
+            "Sort-Object DisplayName | "
+            "Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, EstimatedSize | "
+            "ConvertTo-Json -Compress"
+        )
+        return _ps(script, timeout=30)
+    return _run(["system_profiler", "SPApplicationsDataType", "-json"], timeout=60)
 
 
 def handle_get_event_logs() -> str:
-    script = (
-        "$since = (Get-Date).AddHours(-24); "
-        "Get-WinEvent -FilterHashtable @{LogName='System','Application'; Level=1,2; StartTime=$since} "
-        "-MaxEvents 50 -ErrorAction SilentlyContinue | "
-        "Select-Object TimeCreated, LevelDisplayName, ProviderName, Message | "
-        "Format-List | Out-String -Width 120"
-    )
-    return _ps(script, timeout=30)
+    if IS_WINDOWS:
+        script = (
+            "$since = (Get-Date).AddHours(-24); "
+            "Get-WinEvent -FilterHashtable @{LogName='System','Application'; Level=1,2; StartTime=$since} "
+            "-MaxEvents 50 -ErrorAction SilentlyContinue | "
+            "Select-Object TimeCreated, LevelDisplayName, ProviderName, Message | "
+            "Format-List | Out-String -Width 120"
+        )
+        return _ps(script, timeout=30)
+    return _run([
+        "log", "show", "--last", "24h",
+        "--predicate", "eventType == faultEvent",
+        "--style", "compact"
+    ], timeout=60)
 
 
 def handle_run_sfc() -> str:
-    return _run(["sfc", "/scannow"], timeout=600)
+    if IS_WINDOWS:
+        return _run(["sfc", "/scannow"], timeout=600)
+    return _run(["diskutil", "verifyVolume", "/"], timeout=120)
 
 
 def handle_flush_dns() -> str:
@@ -291,92 +305,112 @@ def handle_lock_screen() -> str:
 
 
 def handle_enable_rdp() -> str:
-    script = (
-        "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' "
-        "-Name fDenyTSConnections -Value 0; "
-        "Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'; "
-        "'RDP enabled'"
-    )
-    return _ps(script, timeout=15)
+    if IS_WINDOWS:
+        script = (
+            "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' "
+            "-Name fDenyTSConnections -Value 0; "
+            "Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'; "
+            "'RDP enabled'"
+        )
+        return _ps(script, timeout=15)
+    return _run(["sudo", "systemsetup", "-setremotelogin", "on"], timeout=15)
 
 
 def handle_disable_rdp() -> str:
-    script = (
-        "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' "
-        "-Name fDenyTSConnections -Value 1; "
-        "Disable-NetFirewallRule -DisplayGroup 'Remote Desktop'; "
-        "'RDP disabled'"
-    )
-    return _ps(script, timeout=15)
+    if IS_WINDOWS:
+        script = (
+            "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' "
+            "-Name fDenyTSConnections -Value 1; "
+            "Disable-NetFirewallRule -DisplayGroup 'Remote Desktop'; "
+            "'RDP disabled'"
+        )
+        return _ps(script, timeout=15)
+    return _run(["sudo", "systemsetup", "-setremotelogin", "off"], timeout=15)
 
 
 def handle_get_bitlocker_status() -> str:
-    script = (
-        "Get-BitLockerVolume -ErrorAction SilentlyContinue | "
-        "Select-Object MountPoint, VolumeStatus, EncryptionPercentage, ProtectionStatus | "
-        "Format-Table -AutoSize | Out-String"
-    )
-    return _ps(script, timeout=15)
+    if IS_WINDOWS:
+        script = (
+            "Get-BitLockerVolume -ErrorAction SilentlyContinue | "
+            "Select-Object MountPoint, VolumeStatus, EncryptionPercentage, ProtectionStatus | "
+            "Format-Table -AutoSize | Out-String"
+        )
+        return _ps(script, timeout=15)
+    return _run(["fdesetup", "status"], timeout=15)
 
 
 def handle_enable_bitlocker(payload: dict) -> str:
-    drive = payload.get("drive", "C:").strip().rstrip("\\")
-    if len(drive) != 2 or drive[1] != ":" or not drive[0].isalpha():
-        return "ERROR: Invalid drive letter"
-    script = (
-        f"Enable-BitLocker -MountPoint '{drive}' -EncryptionMethod XtsAes256 "
-        f"-UsedSpaceOnly -TpmProtector -ErrorAction Stop; "
-        f"'BitLocker enabling on {drive} — may take time'"
-    )
-    return _ps(script, timeout=30)
+    if IS_WINDOWS:
+        drive = payload.get("drive", "C:").strip().rstrip("\\")
+        if len(drive) != 2 or drive[1] != ":" or not drive[0].isalpha():
+            return "ERROR: Invalid drive letter"
+        script = (
+            f"Enable-BitLocker -MountPoint '{drive}' -EncryptionMethod XtsAes256 "
+            f"-UsedSpaceOnly -TpmProtector -ErrorAction Stop; "
+            f"'BitLocker enabling on {drive} — may take time'"
+        )
+        return _ps(script, timeout=30)
+    return _run(["sudo", "fdesetup", "enable"], timeout=30)
 
 
 def handle_disable_bitlocker(payload: dict) -> str:
-    drive = payload.get("drive", "C:").strip().rstrip("\\")
-    if len(drive) != 2 or drive[1] != ":" or not drive[0].isalpha():
-        return "ERROR: Invalid drive letter"
-    script = (
-        f"Disable-BitLocker -MountPoint '{drive}' -ErrorAction Stop; "
-        f"'BitLocker disabling on {drive} — decryption running in background'"
-    )
-    return _ps(script, timeout=30)
+    if IS_WINDOWS:
+        drive = payload.get("drive", "C:").strip().rstrip("\\")
+        if len(drive) != 2 or drive[1] != ":" or not drive[0].isalpha():
+            return "ERROR: Invalid drive letter"
+        script = (
+            f"Disable-BitLocker -MountPoint '{drive}' -ErrorAction Stop; "
+            f"'BitLocker disabling on {drive} — decryption running in background'"
+        )
+        return _ps(script, timeout=30)
+    return _run(["sudo", "fdesetup", "disable"], timeout=30)
 
 
 def handle_get_hardware_devices() -> str:
-    script = (
-        "Get-PnpDevice -PresentOnly | "
-        "Sort-Object Class, FriendlyName | "
-        "Select-Object Status, Class, FriendlyName, InstanceId | "
-        "ConvertTo-Json -Compress"
-    )
-    return _ps(script, timeout=30)
+    if IS_WINDOWS:
+        script = (
+            "Get-PnpDevice -PresentOnly | "
+            "Sort-Object Class, FriendlyName | "
+            "Select-Object Status, Class, FriendlyName, InstanceId | "
+            "ConvertTo-Json -Compress"
+        )
+        return _ps(script, timeout=30)
+    return _run(["system_profiler", "SPUSBDataType", "SPPCIDataType", "-json"], timeout=30)
 
 
 def handle_uninstall_software(payload: dict) -> str:
     name = payload.get("name", "").strip()
     if not name:
         return "ERROR: Missing name in payload"
-    # Escape single quotes for PowerShell string context
-    name = name.replace("'", "''")
-    # lookup uninstall string from registry — never execute raw user input
-    script = (
-        f"$paths = 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
-        f"'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'; "
-        f"$app = Get-ItemProperty $paths -ErrorAction SilentlyContinue | "
-        f"Where-Object {{ $_.DisplayName -eq '{name}' }} | Select-Object -First 1; "
-        f"if (-not $app) {{ 'ERROR: App not found in registry'; return }}; "
-        f"$us = $app.UninstallString; "
-        f"if (-not $us) {{ 'ERROR: No UninstallString found'; return }}; "
-        f"if ($us -match 'msiexec') {{"
-        f"  $prod = $us -replace '.*\\{{(.+?)\\}}.*','{{$1}}'; "
-        f"  Start-Process msiexec -ArgumentList \"/x $prod /qn /norestart\" -Wait; "
-        f"  'Uninstall completed (MSI)' "
-        f"}} else {{"
-        f"  Start-Process cmd -ArgumentList \"/c $us /S /SILENT /quiet\" -Wait; "
-        f"  'Uninstall completed' "
-        f"}}"
-    )
-    return _ps(script, timeout=300)
+    if IS_WINDOWS:
+        # Escape single quotes for PowerShell string context
+        name = name.replace("'", "''")
+        # lookup uninstall string from registry — never execute raw user input
+        script = (
+            f"$paths = 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
+            f"'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'; "
+            f"$app = Get-ItemProperty $paths -ErrorAction SilentlyContinue | "
+            f"Where-Object {{ $_.DisplayName -eq '{name}' }} | Select-Object -First 1; "
+            f"if (-not $app) {{ 'ERROR: App not found in registry'; return }}; "
+            f"$us = $app.UninstallString; "
+            f"if (-not $us) {{ 'ERROR: No UninstallString found'; return }}; "
+            f"if ($us -match 'msiexec') {{"
+            f"  $prod = $us -replace '.*\\{{(.+?)\\}}.*','{{$1}}'; "
+            f"  Start-Process msiexec -ArgumentList \"/x $prod /qn /norestart\" -Wait; "
+            f"  'Uninstall completed (MSI)' "
+            f"}} else {{"
+            f"  Start-Process cmd -ArgumentList \"/c $us /S /SILENT /quiet\" -Wait; "
+            f"  'Uninstall completed' "
+            f"}}"
+        )
+        return _ps(script, timeout=300)
+    import os
+    if "/" in name or "\\" in name or ".." in name:
+        return "ERROR: Invalid app name"
+    app_path = f"/Applications/{name}.app"
+    if not os.path.isdir(app_path):
+        return f"ERROR: {app_path} not found"
+    return _run(["sudo", "rm", "-rf", app_path], timeout=60)
 
 
 def handle_run_defender_scan() -> str:

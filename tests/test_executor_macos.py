@@ -10,7 +10,7 @@ def test_run_no_startupinfo_on_macos(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     captured = {}
@@ -37,7 +37,7 @@ def test_find_anydesk_macos_path(monkeypatch, tmp_path):
     macos_path = tmp_path / "AnyDesk"
     macos_path.write_text("fake")
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
     ex._ANYDESK_MACOS_PATH = str(macos_path)
 
@@ -52,7 +52,7 @@ def test_custom_cmd_macos_uses_bash(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     calls = []
@@ -74,7 +74,7 @@ def test_kill_process_macos(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     calls = []
@@ -95,7 +95,7 @@ def test_kill_process_macos_strips_exe(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     calls = []
@@ -114,7 +114,7 @@ def test_reboot_macos(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     calls = []
@@ -133,7 +133,7 @@ def test_ping_test_macos(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     calls = []
@@ -152,7 +152,7 @@ def test_get_system_info_macos(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     calls = []
@@ -179,7 +179,7 @@ def test_flush_dns_macos(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     calls = []
@@ -198,8 +198,63 @@ def test_run_defender_scan_macos(monkeypatch):
     monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
     monkeypatch.setattr(platform_utils, "IS_MACOS", True)
 
-    import agent.executor as ex
+    import executor as ex
     reload(ex)
 
     result = ex.handle_run_defender_scan()
     assert "XProtect" in result
+
+
+def test_list_installed_software_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import executor as ex
+    reload(ex)
+
+    mock_result = mock.MagicMock()
+    mock_result.stdout = '{"SPApplicationsDataType": []}'
+    mock_result.stderr = ""
+    with mock.patch("subprocess.run", return_value=mock_result):
+        result = ex.handle_list_installed_software()
+    assert "SPApplicationsDataType" in result
+
+
+def test_get_bitlocker_status_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import executor as ex
+    reload(ex)
+
+    mock_result = mock.MagicMock()
+    mock_result.stdout = "FileVault is On.\n"
+    mock_result.stderr = ""
+    with mock.patch("subprocess.run", return_value=mock_result):
+        result = ex.handle_get_bitlocker_status()
+    assert "FileVault" in result
+
+
+def test_enable_rdp_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import executor as ex
+    reload(ex)
+
+    calls = []
+    def fake_run(args, **kwargs):
+        calls.append(args); r = mock.MagicMock(); r.stdout = ""; r.stderr = ""; return r
+
+    with mock.patch("subprocess.run", side_effect=fake_run):
+        ex.handle_enable_rdp()
+    assert any("setremotelogin" in str(c) for c in calls)
