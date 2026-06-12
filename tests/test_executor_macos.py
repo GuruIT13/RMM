@@ -65,3 +65,81 @@ def test_custom_cmd_macos_uses_bash(monkeypatch):
         result = ex.handle_custom_cmd({"command": "echo hello"})
 
     assert calls[0] == ["bash", "-c", "echo hello"]
+
+
+def test_kill_process_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import agent.executor as ex
+    reload(ex)
+
+    calls = []
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        r = mock.MagicMock(); r.stdout = "killed"; r.stderr = ""
+        return r
+
+    with mock.patch("subprocess.run", side_effect=fake_run):
+        ex.handle_kill_process({"process_name": "Finder"})
+    assert calls[0] == ["pkill", "-9", "Finder"]
+
+
+def test_kill_process_macos_strips_exe(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import agent.executor as ex
+    reload(ex)
+
+    calls = []
+    def fake_run(args, **kwargs):
+        calls.append(args); r = mock.MagicMock(); r.stdout = ""; r.stderr = ""; return r
+
+    with mock.patch("subprocess.run", side_effect=fake_run):
+        ex.handle_kill_process({"process_name": "notepad.exe"})
+    assert calls[0] == ["pkill", "-9", "notepad"]
+
+
+def test_reboot_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import agent.executor as ex
+    reload(ex)
+
+    calls = []
+    def fake_run(args, **kwargs):
+        calls.append(args); r = mock.MagicMock(); r.stdout = ""; r.stderr = ""; return r
+
+    with mock.patch("subprocess.run", side_effect=fake_run):
+        ex.handle_reboot()
+    assert calls[0] == ["sudo", "shutdown", "-r", "now"]
+
+
+def test_ping_test_macos(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import agent.executor as ex
+    reload(ex)
+
+    calls = []
+    def fake_run(args, **kwargs):
+        calls.append(args); r = mock.MagicMock(); r.stdout = "pong"; r.stderr = ""; return r
+
+    with mock.patch("subprocess.run", side_effect=fake_run):
+        ex.handle_ping_test({"host": "8.8.8.8"})
+    assert calls[0] == ["ping", "-c", "4", "8.8.8.8"]

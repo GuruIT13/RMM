@@ -13,7 +13,8 @@ from platform_utils import IS_WINDOWS, IS_MACOS
 
 logger = logging.getLogger(__name__)
 
-_PROCESS_NAME_RE = _re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,253}\.exe$', _re.IGNORECASE)
+_PROCESS_NAME_WIN_RE = _re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,253}\.exe$', _re.IGNORECASE)
+_PROCESS_NAME_MAC_RE = _re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._\- ]{0,253}$')
 _CUSTOM_CMD_MAX_LEN = 2000
 
 _ANYDESK_SEARCH_PATHS = [
@@ -114,17 +115,28 @@ def handle_windows_update() -> str:
 
 def handle_kill_process(payload: dict) -> str:
     process_name = payload.get("process_name", "").strip()
-    if not process_name or not _PROCESS_NAME_RE.match(process_name):
-        return "ERROR: Invalid process_name — must be a valid .exe filename (e.g. notepad.exe)"
-    return _run(["taskkill", "/F", "/IM", process_name])
+    if IS_WINDOWS:
+        if not process_name or not _PROCESS_NAME_WIN_RE.match(process_name):
+            return "ERROR: Invalid process_name — must be a valid .exe filename (e.g. notepad.exe)"
+        return _run(["taskkill", "/F", "/IM", process_name])
+    else:
+        # strip .exe suffix if user sent a Windows-style name
+        name = _re.sub(r'\.exe$', '', process_name, flags=_re.IGNORECASE)
+        if not name or not _PROCESS_NAME_MAC_RE.match(name):
+            return "ERROR: Invalid process_name"
+        return _run(["pkill", "-9", name])
 
 
 def handle_reboot() -> str:
-    return _run(["shutdown", "/r", "/t", "0", "/f"])
+    if IS_WINDOWS:
+        return _run(["shutdown", "/r", "/t", "0", "/f"])
+    return _run(["sudo", "shutdown", "-r", "now"])
 
 
 def handle_shutdown() -> str:
-    return _run(["shutdown", "/s", "/t", "0", "/f"])
+    if IS_WINDOWS:
+        return _run(["shutdown", "/s", "/t", "0", "/f"])
+    return _run(["sudo", "shutdown", "-h", "now"])
 
 
 def handle_custom_cmd(payload: dict) -> str:
@@ -230,15 +242,19 @@ def handle_ping_test(payload: dict) -> str:
     host = payload.get("host", "").strip()
     if not host:
         return "ERROR: Missing host in payload"
-    # validate: allow hostname/IP chars only
     allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_")
-    if not host or not all(c in allowed for c in host):
+    if not all(c in allowed for c in host):
         return "ERROR: Invalid host"
-    return _run(["ping", "-n", "4", host], timeout=30)
+    if IS_WINDOWS:
+        return _run(["ping", "-n", "4", host], timeout=30)
+    return _run(["ping", "-c", "4", host], timeout=30)
 
 
 def handle_lock_screen() -> str:
-    _ps("rundll32.exe user32.dll,LockWorkStation", timeout=5)
+    if IS_WINDOWS:
+        _ps("rundll32.exe user32.dll,LockWorkStation", timeout=5)
+    else:
+        _run(["pmset", "displaysleepnow"], timeout=5)
     return "Screen locked"
 
 
