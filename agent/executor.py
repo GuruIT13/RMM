@@ -9,6 +9,7 @@ import re as _re
 
 from config import COMMAND_TIMEOUT
 import snapshot as _snapshot
+from platform_utils import IS_WINDOWS, IS_MACOS
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,17 @@ _ANYDESK_SEARCH_PATHS = [
     r"C:\ProgramData\AnyDesk\AnyDesk.exe",
 ]
 
+_ANYDESK_MACOS_PATH = "/Applications/AnyDesk.app/Contents/MacOS/AnyDesk"
+
 
 def _find_anydesk() -> Optional[str]:
-    import os, winreg
+    import os
+    if IS_MACOS:
+        if os.path.isfile(_ANYDESK_MACOS_PATH):
+            return _ANYDESK_MACOS_PATH
+        return None
+    # Windows
+    import winreg
     for p in _ANYDESK_SEARCH_PATHS:
         if os.path.isfile(p):
             return p
@@ -51,14 +60,10 @@ def _hidden_startupinfo() -> subprocess.STARTUPINFO:
 
 def _run(args: list[str], timeout: int = COMMAND_TIMEOUT, shell: bool = False) -> str:
     try:
-        result = subprocess.run(
-            args,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            startupinfo=_hidden_startupinfo(),
-            shell=shell,
-        )
+        kwargs: dict = dict(capture_output=True, text=True, timeout=timeout, shell=shell)
+        if IS_WINDOWS:
+            kwargs["startupinfo"] = _hidden_startupinfo()
+        result = subprocess.run(args, **kwargs)
         return (result.stdout + result.stderr).strip() or "(no output)"
     except subprocess.TimeoutExpired:
         return f"ERROR: Command timed out after {timeout}s"
@@ -128,7 +133,9 @@ def handle_custom_cmd(payload: dict) -> str:
         return "ERROR: Empty command"
     if len(command) > _CUSTOM_CMD_MAX_LEN:
         return f"ERROR: Command exceeds {_CUSTOM_CMD_MAX_LEN} character limit"
-    return _run(["cmd.exe", "/c", command], timeout=COMMAND_TIMEOUT)
+    if IS_WINDOWS:
+        return _run(["cmd.exe", "/c", command], timeout=COMMAND_TIMEOUT)
+    return _run(["bash", "-c", command], timeout=COMMAND_TIMEOUT)
 
 
 # ── new handlers ─────────────────────────────────────────────────────────────
