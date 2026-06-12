@@ -1,5 +1,6 @@
 """Execute commands received from commands_queue. All runs are hidden (no CMD window)."""
 import logging
+import os
 import subprocess
 from datetime import datetime, timezone
 from typing import Optional
@@ -27,7 +28,6 @@ _ANYDESK_MACOS_PATH = "/Applications/AnyDesk.app/Contents/MacOS/AnyDesk"
 
 
 def _find_anydesk() -> Optional[str]:
-    import os
     if IS_MACOS:
         if os.path.isfile(_ANYDESK_MACOS_PATH):
             return _ANYDESK_MACOS_PATH
@@ -99,22 +99,22 @@ def handle_disk_cleanup() -> str:
 
 
 def handle_windows_update() -> str:
-    if IS_MACOS:
-        return _run(["softwareupdate", "-ia"], timeout=1800)
-    script = (
-        "$session = New-Object -ComObject Microsoft.Update.Session; "
-        "$searcher = $session.CreateUpdateSearcher(); "
-        "$result = $searcher.Search('IsInstalled=0 and Type=''Software'''); "
-        "if ($result.Updates.Count -eq 0) { 'No updates available'; return }; "
-        "$downloader = $session.CreateUpdateDownloader(); "
-        "$downloader.Updates = $result.Updates; "
-        "$downloader.Download() | Out-Null; "
-        "$installer = $session.CreateUpdateInstaller(); "
-        "$installer.Updates = $result.Updates; "
-        "$installResult = $installer.Install(); "
-        "\"Installed $($result.Updates.Count) update(s). ResultCode=$($installResult.ResultCode) RebootRequired=$($installResult.RebootRequired)\""
-    )
-    return _ps(script, timeout=1800)
+    if IS_WINDOWS:
+        script = (
+            "$session = New-Object -ComObject Microsoft.Update.Session; "
+            "$searcher = $session.CreateUpdateSearcher(); "
+            "$result = $searcher.Search('IsInstalled=0 and Type=''Software'''); "
+            "if ($result.Updates.Count -eq 0) { 'No updates available'; return }; "
+            "$downloader = $session.CreateUpdateDownloader(); "
+            "$downloader.Updates = $result.Updates; "
+            "$downloader.Download() | Out-Null; "
+            "$installer = $session.CreateUpdateInstaller(); "
+            "$installer.Updates = $result.Updates; "
+            "$installResult = $installer.Install(); "
+            "\"Installed $($result.Updates.Count) update(s). ResultCode=$($installResult.ResultCode) RebootRequired=$($installResult.RebootRequired)\""
+        )
+        return _ps(script, timeout=1800)
+    return _run(["softwareupdate", "-ia"], timeout=1800)
 
 
 def handle_kill_process(payload: dict) -> str:
@@ -404,7 +404,6 @@ def handle_uninstall_software(payload: dict) -> str:
             f"}}"
         )
         return _ps(script, timeout=300)
-    import os
     if "/" in name or "\\" in name or ".." in name:
         return "ERROR: Invalid app name"
     app_path = f"/Applications/{name}.app"

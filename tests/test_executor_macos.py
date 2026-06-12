@@ -258,3 +258,54 @@ def test_enable_rdp_macos(monkeypatch):
     with mock.patch("subprocess.run", side_effect=fake_run):
         ex.handle_enable_rdp()
     assert any("setremotelogin" in str(c) for c in calls)
+
+
+def test_uninstall_software_macos_valid(monkeypatch, tmp_path):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import executor as ex
+    reload(ex)
+
+    calls = []
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        r = mock.MagicMock(); r.stdout = ""; r.stderr = ""; return r
+
+    with mock.patch("subprocess.run", side_effect=fake_run), \
+         mock.patch("os.path.isdir", return_value=True):
+        result = ex.handle_uninstall_software({"name": "TestApp"})
+
+    assert calls[0] == ["sudo", "rm", "-rf", "/Applications/TestApp.app"]
+
+
+def test_uninstall_software_macos_path_traversal(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import executor as ex
+    reload(ex)
+
+    result = ex.handle_uninstall_software({"name": "../etc/passwd"})
+    assert result == "ERROR: Invalid app name"
+
+
+def test_uninstall_software_macos_not_found(monkeypatch):
+    from importlib import reload
+    import platform_utils
+
+    monkeypatch.setattr(platform_utils, "IS_WINDOWS", False)
+    monkeypatch.setattr(platform_utils, "IS_MACOS", True)
+
+    import executor as ex
+    reload(ex)
+
+    with mock.patch("os.path.isdir", return_value=False):
+        result = ex.handle_uninstall_software({"name": "NonExistentApp"})
+    assert "not found" in result
