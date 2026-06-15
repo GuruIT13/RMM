@@ -1,11 +1,37 @@
-"""System tray icon with SOS button. Runs in its own thread."""
+"""System tray icon with SOS button. Runs in its own thread.
+
+On macOS LaunchDaemon (no GUI session), tray is silently skipped.
+On macOS with GUI session (user login), tray runs via pystray AppKit backend.
+"""
 import logging
+import os
 import threading
 from typing import Optional
 
 from supabase import Client
 
+from platform_utils import IS_MACOS
+
 logger = logging.getLogger(__name__)
+
+
+def _has_gui_session() -> bool:
+    """Return True if running inside a GUI session (not a headless daemon)."""
+    if IS_MACOS:
+        # LaunchDaemons run as root with no DISPLAY or TERM_PROGRAM set by a user session.
+        # A simple but reliable signal: check if the Aqua window server is reachable.
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["lsappinfo", "list"],
+                capture_output=True, timeout=3
+            )
+            return result.returncode == 0 and len(result.stdout) > 0
+        except Exception:
+            return False
+    # Windows: always has a desktop session when NSSM runs it interactively.
+    return True
+
 
 try:
     import pystray
@@ -17,7 +43,6 @@ except ImportError:
 
 
 def _create_icon_image() -> "Image.Image":
-    """Simple red circle icon."""
     img = Image.new("RGB", (64, 64), color=(30, 30, 30))
     draw = ImageDraw.Draw(img)
     draw.ellipse([8, 8, 56, 56], fill=(220, 50, 50))
@@ -39,6 +64,9 @@ def _send_sos_alert(supabase: Client, device_id: str) -> None:
 
 def start_tray(supabase: Client, device_id: str) -> Optional[threading.Thread]:
     if not TRAY_AVAILABLE:
+        return None
+    if not _has_gui_session():
+        logger.info("No GUI session detected — tray icon skipped")
         return None
 
     def on_sos(icon, item):

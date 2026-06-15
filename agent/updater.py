@@ -2,22 +2,22 @@
 import hashlib
 import logging
 import os
+import stat
 import subprocess
 import sys
 import tempfile
-from typing import Optional
 
 import requests
 from packaging.version import Version
 from supabase import Client
 
 from config import AGENT_VERSION
+from platform_utils import IS_WINDOWS, IS_MACOS
 
 logger = logging.getLogger(__name__)
 
 
 def _verify_checksum(file_path: str, expected_sha256: str) -> bool:
-    """Return True if file SHA-256 matches expected hex digest."""
     sha256 = hashlib.sha256()
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -31,10 +31,7 @@ def _verify_checksum(file_path: str, expected_sha256: str) -> bool:
 
 
 def check_and_update(supabase: Client) -> None:
-    """
-    Fetch latest version from Supabase. If newer, download exe to temp,
-    replace current exe, then restart the service via NSSM.
-    """
+    """Fetch latest version from Supabase. If newer, download and replace, then restart."""
     try:
         res = (
             supabase.table("agent_versions")
@@ -64,7 +61,8 @@ def check_and_update(supabase: Client) -> None:
 def _download_and_replace(download_url: str, version_row: dict) -> None:
     try:
         current_exe = sys.executable
-        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".exe")
+        suffix = ".exe" if IS_WINDOWS else ""
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=suffix)
         os.close(tmp_fd)
 
         response = requests.get(download_url, stream=True, timeout=120)
@@ -79,28 +77,56 @@ def _download_and_replace(download_url: str, version_row: dict) -> None:
             os.remove(tmp_path)
             return
 
-        # Replace current exe then restart service
-        # bat script does the replace-after-exit trick
-        bat = f"""
-@echo off
-ping 127.0.0.1 -n 3 > nul
-move /Y "{tmp_path}" "{current_exe}"
-nssm restart RMMAgent
-"""
-        bat_path = os.path.join(tempfile.gettempdir(), "rmm_update.bat")
-        with open(bat_path, "w") as f:
-            f.write(bat)
-
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = subprocess.SW_HIDE
-        subprocess.Popen(
-            ["cmd.exe", "/c", bat_path],
-            startupinfo=si,
-            creationflags=subprocess.DETACHED_PROCESS,
-        )
-        logger.info("Update initiated — service will restart")
-        sys.exit(0)
+        if IS_WINDOWS:
+            _restart_windows(tmp_path, current_exe)
+        else:
+            _restart_macos(tmp_path, current_exe)
 
     except Exception as e:
         logger.error("_download_and_replace failed: %s", e)
+
+
+def _restart_windows(tmp_path: str, current_exe: str) -> None:
+    bat = (
+        "@echo off\r\n"
+        "ping 127.0.0.1 -n 3 > nul\r\n"
+        f'move /Y "{tmp_path}" "{current_exe}"\r\n'
+        "nssm restart RMMAgent\r\n"
+    )
+    bat_path = os.path.join(tempfile.gettempdir(), "rmm_update.bat")
+    with open(bat_path, "w") as f:
+        f.write(bat)
+
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = subprocess.SW_HIDE
+    subprocess.Popen(
+        ["cmd.exe", "/c", bat_path],
+        startupinfo=si,
+        creationflags=subprocess.DETACHED_PROCESS,
+    )
+    logger.info("Update initiated (Windows) — service will restart")
+    sys.exit(0)
+
+
+def _restart_macos(tmp_path: str, current_exe: str) -> None:
+    # Make executable, replace current binary, restart via launchctl
+    os.chmod(tmp_path, os.stat(tmp_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+    sh = (
+        "#!/bin/sh\n"
+        "sleep 3\n"
+        f'mv -f "{tmp_path}" "{current_exe}"\n'
+        "launchctl kickstart -k system/com.rmm.agent\n"
+    )
+    sh_path = os.path.join(tempfile.gettempdir(), "rmm_update.sh")
+    with open(sh_path, "w") as f:
+        f.write(sh)
+    os.chmod(sh_path, 0o755)
+    subprocess.Popen(
+        ["bash", sh_path],
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    logger.info("Update initiated (macOS) — service will restart")
+    sys.exit(0)
