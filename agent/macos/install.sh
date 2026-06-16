@@ -29,27 +29,38 @@ REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "")}"
 
 run_as_user() { sudo -Hu "$REAL_USER" "$@"; }
 
-if ! run_as_user brew --version &>/dev/null; then
+# Homebrew on Apple Silicon lives at /opt/homebrew, Intel at /usr/local
+if [ -x "/opt/homebrew/bin/brew" ]; then
+    BREW="/opt/homebrew/bin/brew"
+elif [ -x "/usr/local/bin/brew" ]; then
+    BREW="/usr/local/bin/brew"
+else
     echo "Installing Homebrew..."
     run_as_user bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # After install, determine path
+    if [ -x "/opt/homebrew/bin/brew" ]; then
+        BREW="/opt/homebrew/bin/brew"
+    else
+        BREW="/usr/local/bin/brew"
+    fi
 fi
-BREW=$(run_as_user brew --prefix)/bin/brew
-ok "Homebrew ready"
+ok "Homebrew ready: $BREW"
 
 # ── 2. Python 3.12 via Homebrew ────────────────────────────────────────────────
 # Avoid Python 3.13+ — Pillow wheels may not be available yet.
 # Avoid system Python 3.14 on macOS 15+.
 echo "Checking Python..."
-BREW_PY="$(run_as_user "$BREW" --prefix python@3.12 2>/dev/null)/bin/python3"
+BREW_PY="$(run_as_user "$BREW" --prefix python@3.12 2>/dev/null || echo "")/bin/python3"
 if [ ! -x "$BREW_PY" ]; then
     warn "Installing python@3.12 via Homebrew..."
     run_as_user "$BREW" install python@3.12
+    BREW_PY="$(run_as_user "$BREW" --prefix python@3.12)/bin/python3"
 fi
 PY_VERSION=$("$BREW_PY" --version 2>&1)
 ok "Python: $BREW_PY ($PY_VERSION)"
 
 # ── 3. libjpeg (Pillow build dep) ─────────────────────────────────────────────
-if ! run_as_user "$BREW" list jpeg &>/dev/null; then
+if ! run_as_user "$BREW" list --formula jpeg &>/dev/null; then
     warn "Installing libjpeg..."
     run_as_user "$BREW" install jpeg
 fi
