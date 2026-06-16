@@ -434,6 +434,35 @@ def handle_run_defender_scan() -> str:
     return _ps(script, timeout=300)
 
 
+def handle_test_snapshot_connection(payload: dict) -> str:
+    """Check if a share path exists and is writable by writing a small test file then deleting it."""
+    import tempfile
+    import uuid as _uuid
+
+    share_path = payload.get("share_path", "").strip()
+    if not share_path:
+        # Fall back to reading from Supabase happens at call site; here we need share_path in payload
+        return "ERROR: No share_path provided in payload"
+
+    try:
+        if not os.path.isdir(share_path):
+            return f"ERROR: Path does not exist or is not accessible: {share_path}"
+    except Exception as e:
+        return f"ERROR: Cannot check path: {e}"
+
+    test_filename = f".rmm_test_{_uuid.uuid4().hex[:8]}.tmp"
+    test_filepath = os.path.join(share_path, test_filename)
+    try:
+        with open(test_filepath, "w") as f:
+            f.write("RMM connection test")
+        os.remove(test_filepath)
+        return "OK: path is accessible"
+    except PermissionError as e:
+        return f"ERROR: Permission denied — {e}"
+    except Exception as e:
+        return f"ERROR: {e}"
+
+
 def handle_take_snapshot(supabase: Client, device_id: str) -> str:
     try:
         res = supabase.table("devices").select(
@@ -485,6 +514,7 @@ COMMAND_HANDLERS: dict = {
     "get_hardware_devices":     (handle_get_hardware_devices, []),
     "uninstall_software":       (handle_uninstall_software, ["payload"]),
     "take_snapshot":            None,  # handled separately (needs supabase + device_id)
+    "test_snapshot_connection": (handle_test_snapshot_connection, ["payload"]),
 }
 
 

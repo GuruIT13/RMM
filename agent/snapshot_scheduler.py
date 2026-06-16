@@ -3,6 +3,7 @@ import logging
 import random
 import threading
 import time
+from typing import Optional
 
 from supabase import Client
 
@@ -23,11 +24,12 @@ def _fetch_config(supabase: Client, device_id: str) -> dict:
       max_interval: int (minutes)
       display_name: str | None
       hostname: str | None
+      directory_id: str | None
     Directory-level snapshot_enabled=false overrides device-level true.
     """
     try:
         res = supabase.table("devices").select(
-            "snapshot_enabled, display_name, hostname, "
+            "snapshot_enabled, display_name, hostname, directory_id, "
             "directories(snapshot_enabled, snapshot_share_path, snapshot_min_interval, snapshot_max_interval)"
         ).eq("id", device_id).single().execute()
         row = res.data or {}
@@ -50,6 +52,7 @@ def _fetch_config(supabase: Client, device_id: str) -> dict:
             "max_interval": dir_cfg.get("snapshot_max_interval") or _DEFAULT_MAX,
             "display_name": row.get("display_name"),
             "hostname": row.get("hostname"),
+            "directory_id": row.get("directory_id"),
         }
     except Exception as e:
         logger.warning("snapshot_scheduler: config fetch failed: %s", e)
@@ -60,7 +63,31 @@ def _fetch_config(supabase: Client, device_id: str) -> dict:
             "max_interval": _DEFAULT_MAX,
             "display_name": None,
             "hostname": None,
+            "directory_id": None,
         }
+
+
+def _log_snapshot_result(
+    supabase: Client,
+    device_id: str,
+    directory_id: Optional[str],
+    status: str,
+    message: str,
+    files_written: int,
+    share_path: Optional[str],
+) -> None:
+    """Insert a row into snapshot_logs recording the outcome of a snapshot attempt."""
+    try:
+        supabase.table("snapshot_logs").insert({
+            "device_id": device_id,
+            "directory_id": directory_id,
+            "status": status,
+            "message": message,
+            "files_written": files_written,
+            "share_path": share_path,
+        }).execute()
+    except Exception as e:
+        logger.warning("snapshot_scheduler: failed to write snapshot_log: %s", e)
 
 
 def _scheduler_loop(supabase: Client, device_id: str) -> None:
@@ -72,6 +99,9 @@ def _scheduler_loop(supabase: Client, device_id: str) -> None:
         sleep_s = random.uniform(min_s, max_s)
 
         if cfg["enabled"] and cfg["share_path"]:
+            status = "failed"
+            message = "OK"
+            files_written = 0
             try:
                 written = snapshot.take(
                     share_path=cfg["share_path"],
@@ -79,11 +109,28 @@ def _scheduler_loop(supabase: Client, device_id: str) -> None:
                     hostname=cfg["hostname"],
                 )
                 if written:
-                    logger.info("Snapshot: wrote %d file(s)", len(written))
+                    files_written = len(written)
+                    status = "success"
+                    message = "OK"
+                    logger.info("Snapshot: wrote %d file(s)", files_written)
                 else:
-                    logger.warning("Snapshot: no files written (share inaccessible or no monitors)")
+                    status = "failed"
+                    message = "No files written (share inaccessible or no monitors)"
+                    logger.warning("Snapshot: %s", message)
             except Exception as e:
+                status = "failed"
+                message = str(e)
                 logger.warning("Snapshot failed unexpectedly: %s", e)
+
+            _log_snapshot_result(
+                supabase=supabase,
+                device_id=device_id,
+                directory_id=cfg["directory_id"],
+                status=status,
+                message=message,
+                files_written=files_written,
+                share_path=cfg["share_path"],
+            )
         else:
             logger.debug("Snapshot disabled or no share path — skipping")
 
