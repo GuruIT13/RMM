@@ -95,6 +95,7 @@ ok "git ready"
 
 # ── 5. Clone / update repo ─────────────────────────────────────────────────────
 echo "Installing to $INSTALL_DIR..."
+git config --global --add safe.directory "$INSTALL_DIR" 2>/dev/null || true
 if [ -d "$INSTALL_DIR/.git" ]; then
     warn "Existing install found — updating..."
     git -C "$INSTALL_DIR" pull --ff-only
