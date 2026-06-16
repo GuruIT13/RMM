@@ -18,17 +18,14 @@ logger = logging.getLogger(__name__)
 def _has_gui_session() -> bool:
     """Return True if running inside a GUI session (not a headless daemon)."""
     if IS_MACOS:
-        # LaunchDaemons run as root with no DISPLAY or TERM_PROGRAM set by a user session.
-        # A simple but reliable signal: check if the Aqua window server is reachable.
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["lsappinfo", "list"],
-                capture_output=True, timeout=3
-            )
-            return result.returncode == 0 and len(result.stdout) > 0
-        except Exception:
+        # LaunchDaemons run as root with no GUI session.
+        # Most reliable check: running as root almost always means daemon context.
+        if os.getuid() == 0:
             return False
+        # Secondary check: TERM_PROGRAM or DISPLAY set by a real user session.
+        if os.environ.get("TERM_PROGRAM") or os.environ.get("DISPLAY"):
+            return True
+        return False
     # Windows: always has a desktop session when NSSM runs it interactively.
     return True
 
