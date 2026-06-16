@@ -17,7 +17,7 @@ if mount | grep -q "$MOUNT_POINT"; then
     umount "$MOUNT_POINT" 2>/dev/null || diskutil unmount force "$MOUNT_POINT" 2>/dev/null
 fi
 
-mount_smbfs -o nobrowse,noacl "//${SMB_USER}:${SMB_PASS}@${SMB_SERVER}/${SMB_SHARE}" "$MOUNT_POINT"
+mount_smbfs -o nobrowse "//${SMB_USER}:${SMB_PASS}@${SMB_SERVER}/${SMB_SHARE}" "$MOUNT_POINT"
 
 if [ $? -eq 0 ]; then
     echo "✓ Mounted at $MOUNT_POINT"
@@ -41,7 +41,7 @@ cat > "$PLIST" << EOF
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>mkdir -p ${MOUNT_POINT} &amp;&amp; mount_smbfs -o nobrowse,noacl //${SMB_USER}:${SMB_PASS}@${SMB_SERVER}/${SMB_SHARE} ${MOUNT_POINT}</string>
+        <string>mkdir -p ${MOUNT_POINT} &amp;&amp; mount_smbfs -o nobrowse //${SMB_USER}:${SMB_PASS}@${SMB_SERVER}/${SMB_SHARE} ${MOUNT_POINT}</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
