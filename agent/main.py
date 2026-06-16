@@ -101,11 +101,12 @@ async def main_async() -> None:
     snapshot_scheduler.start(supabase_sync, device_id)
 
     loop = asyncio.get_running_loop()
+    stop_event = asyncio.Event()
 
     def _stop():
         mark_offline(supabase_sync, device_id)
         logger.info("Agent stopped")
-        loop.stop()
+        stop_event.set()
 
     for sig in (signal.SIGTERM, signal.SIGINT):
         try:
@@ -113,10 +114,18 @@ async def main_async() -> None:
         except NotImplementedError:
             pass
 
-    await asyncio.gather(
-        heartbeat_loop(supabase_sync, device_id),
-        realtime_loop(supabase_sync, device_id),
-    )
+    tasks = [
+        asyncio.create_task(heartbeat_loop(supabase_sync, device_id)),
+        asyncio.create_task(realtime_loop(supabase_sync, device_id)),
+        asyncio.create_task(stop_event.wait()),
+    ]
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    for t in pending:
+        t.cancel()
+        try:
+            await t
+        except (asyncio.CancelledError, Exception):
+            pass
 
 
 if __name__ == "__main__":
