@@ -48,14 +48,14 @@ ok "Homebrew ready: $BREW"
 
 # ── 2. Python 3.12 via Homebrew ────────────────────────────────────────────────
 echo "Checking Python..."
-# brew --prefix python@3.12 gives /opt/homebrew/opt/python@3.12
-# the actual binary is at libexec/bin/python3 (unversioned symlink)
-BREW_PREFIX="$(run_as_user "$BREW" --prefix python@3.12 2>/dev/null || echo "")"
+# Probe all known locations for python3.12 binary
 BREW_PY=""
 for candidate in \
-    "$BREW_PREFIX/libexec/bin/python3" \
-    "$BREW_PREFIX/bin/python3.12" \
+    "/opt/homebrew/opt/python@3.12/libexec/bin/python3" \
+    "/opt/homebrew/opt/python@3.12/bin/python3.12" \
     "/opt/homebrew/bin/python3.12" \
+    "/usr/local/opt/python@3.12/libexec/bin/python3" \
+    "/usr/local/opt/python@3.12/bin/python3.12" \
     "/usr/local/bin/python3.12"; do
     if [ -x "$candidate" ]; then
         BREW_PY="$candidate"
@@ -66,11 +66,19 @@ done
 if [ -z "$BREW_PY" ]; then
     warn "Installing python@3.12 via Homebrew..."
     run_as_user "$BREW" install --quiet python@3.12
-    BREW_PREFIX="$(run_as_user "$BREW" --prefix python@3.12)"
-    BREW_PY="$BREW_PREFIX/libexec/bin/python3"
+    # Re-probe after install
+    for candidate in \
+        "/opt/homebrew/opt/python@3.12/libexec/bin/python3" \
+        "/opt/homebrew/opt/python@3.12/bin/python3.12" \
+        "/opt/homebrew/bin/python3.12"; do
+        if [ -x "$candidate" ]; then
+            BREW_PY="$candidate"
+            break
+        fi
+    done
 fi
 
-[ -x "$BREW_PY" ] || { echo "ERROR: python3.12 not found after install"; exit 1; }
+[ -x "$BREW_PY" ] || { echo "ERROR: python3.12 not found — run: brew install python@3.12"; exit 1; }
 PY_VERSION=$("$BREW_PY" --version 2>&1)
 ok "Python: $BREW_PY ($PY_VERSION)"
 
