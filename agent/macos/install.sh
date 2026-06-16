@@ -36,7 +36,7 @@ elif [ -x "/usr/local/bin/brew" ]; then
     BREW="/usr/local/bin/brew"
 else
     echo "Installing Homebrew..."
-    run_as_user bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    NONINTERACTIVE=1 run_as_user bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     # After install, determine path
     if [ -x "/opt/homebrew/bin/brew" ]; then
         BREW="/opt/homebrew/bin/brew"
