@@ -1,5 +1,6 @@
 # macOS dependencies — excludes Windows-only packages
 # Pillow pinned to 10.x: stable pre-built wheels for Python 3.12 on Apple Silicon
+certifi>=2024.0.0
 supabase==2.15.2
 psutil==6.1.1
 pystray==0.19.5

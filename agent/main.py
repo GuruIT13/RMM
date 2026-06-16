@@ -4,10 +4,21 @@ Runs as a Windows Service via NSSM, or directly with: python main.py
 """
 import asyncio
 import logging
+import os
 import signal
+import ssl
 import sys
 import time
 from logging.handlers import RotatingFileHandler
+
+# macOS Homebrew Python lacks system CA bundle — point to certifi if available
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+    ssl._create_default_https_context = ssl.create_default_context
+except ImportError:
+    pass
 
 from supabase import create_client                        # sync — for registration/heartbeat
 from supabase import acreate_client                       # async — for Realtime
