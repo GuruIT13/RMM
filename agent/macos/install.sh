@@ -27,7 +27,7 @@ echo ""
 REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "")}"
 [ -n "$REAL_USER" ] || fail "Cannot detect real user. Run: sudo -u <username> sudo bash install.sh"
 
-run_as_user() { sudo -Hu "$REAL_USER" "$@"; }
+run_as_user() { sudo -Hu "$REAL_USER" env NONINTERACTIVE=1 HOMEBREW_NO_ENV_HINTS=1 "$@"; }
 
 # Homebrew on Apple Silicon lives at /opt/homebrew, Intel at /usr/local
 if [ -x "/opt/homebrew/bin/brew" ]; then
@@ -53,7 +53,7 @@ echo "Checking Python..."
 BREW_PY="$(run_as_user "$BREW" --prefix python@3.12 2>/dev/null || echo "")/bin/python3"
 if [ ! -x "$BREW_PY" ]; then
     warn "Installing python@3.12 via Homebrew..."
-    run_as_user "$BREW" install python@3.12
+    run_as_user "$BREW" install --quiet python@3.12
     BREW_PY="$(run_as_user "$BREW" --prefix python@3.12)/bin/python3"
 fi
 PY_VERSION=$("$BREW_PY" --version 2>&1)
@@ -62,7 +62,7 @@ ok "Python: $BREW_PY ($PY_VERSION)"
 # ── 3. libjpeg (Pillow build dep) ─────────────────────────────────────────────
 if ! run_as_user "$BREW" list --formula jpeg &>/dev/null; then
     warn "Installing libjpeg..."
-    run_as_user "$BREW" install jpeg
+    run_as_user "$BREW" install --quiet jpeg
 fi
 ok "libjpeg ready"
 
