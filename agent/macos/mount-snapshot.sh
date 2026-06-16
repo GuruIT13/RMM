@@ -17,7 +17,7 @@ if mount | grep -q "$MOUNT_POINT"; then
     umount "$MOUNT_POINT" 2>/dev/null || diskutil unmount force "$MOUNT_POINT" 2>/dev/null
 fi
 
-mount -t smbfs "//${SMB_USER}:${SMB_PASS}@${SMB_SERVER}/${SMB_SHARE}" "$MOUNT_POINT"
+mount -t smbfs -o nobrowse "//${SMB_USER}:${SMB_PASS}@${SMB_SERVER}/${SMB_SHARE}" "$MOUNT_POINT"
 
 if [ $? -eq 0 ]; then
     echo "✓ Mounted at $MOUNT_POINT"
