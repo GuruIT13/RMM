@@ -6,7 +6,7 @@ from typing import Optional
 
 import psutil
 
-from agent.platform_utils import IS_WINDOWS, IS_MACOS
+from platform_utils import IS_WINDOWS, IS_MACOS
 
 logger = logging.getLogger(__name__)
 
